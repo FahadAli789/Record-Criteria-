@@ -13,6 +13,24 @@ public with sharing class RecordCriteriaEvaluator_Test {
             Assert.isTrue(evaluation.evaluationCritera('Field_1__c','Operation_1__c','Value_1__c'),'The evaluation should pass for'+ recordCriteria.Name);
         }
     }
+    @IsTest
+    public static void performanceLogging(){
+        RecordCriteriaEvaluator evaluation = new RecordCriteriaEvaluator();
+        Account acc = new Account(
+            Name='Test Account 1',
+            AnnualRevenue=1000,
+            Rating='Hot'
+        );
+        evaluation.setSObject(acc);
+        List<Record_Criteria__c> records=makeSingleEvaluationRecordCriterias();
+        for(Integer counter=1;counter<1000;++counter){
+            for(Record_Criteria__c recordCriteria:records){
+                evaluation.setEvaluationRecord(recordCriteria);
+                evaluation.evaluationCritera('Field_1__c','Operation_1__c','Value_1__c');
+            }
+        }
+        System.debug('The Limits are '+ Limits.getCpuTime());
+    }
     @isTest
     public static void evaluationShouldReturnCorrectOverallValue(){
         Map<String,Record_Criteria__c> evalutionRecordsWithMultipleCriteriaByScenarioNames =makeMultipleEvalutionRecordCriteriasByName();
@@ -30,6 +48,14 @@ public with sharing class RecordCriteriaEvaluator_Test {
         Assert.isFalse((evaluation.setEvaluationRecord(evalutionRecordsWithMultipleCriteriaByScenarioNames.get('Testing for 1 true criteria in middle on AND Type'))).evaluate(),'Testing for 1 true criteria in middle on AND Type should return false');
         Assert.isTrue((evaluation.setEvaluationRecord(evalutionRecordsWithMultipleCriteriaByScenarioNames.get('Testing for 1 true criteria in middle on OR Type'))).evaluate(),'Testing for 1 true criteria in middle on OR Type should return true');
 
+    }
+    @IsTest
+    public static void fieldInformationShouldReturnValueOfParentFields(){
+        Account acc = new Account(Name='Test Account');
+        Contact con = new Contact(LastName='Test Contact');
+        con.Account=acc;
+        RecordCriteriaEvaluator.FieldInformation fieldInfo= new RecordCriteriaEvaluator.FieldInformation(con,'Account.Name');
+        Assert.areEqual('Test Account',fieldInfo.getValue(),'The value should be Test Account which is the value in the parent field');
     }
     public static List<Record_Criteria__c> makeSingleEvaluationRecordCriterias(){
         return new List<Record_Criteria__c>{
@@ -72,7 +98,7 @@ public with sharing class RecordCriteriaEvaluator_Test {
             new Record_Criteria__c(
                 Name='Criteria 7',
                 Field_1__c='Rating',
-                Operation_1__c='Contains Right ;',
+                Operation_1__c='Right Contains',
                 Value_1__c='Hot;Cold;Warm'
             )
         };
